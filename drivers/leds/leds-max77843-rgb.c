@@ -758,8 +758,8 @@ static ssize_t store_leds_property(struct device *dev,
 static struct device_attribute leds_control_attrs[] = {
     LEDS_ATTR(led_lowpower_current),
     LEDS_ATTR(led_highpower_current),
-    LEDS_ATTR(led_notificiation_ramp_up),
-    LEDS_ATTR(led_notificiation_ramp_down),
+    LEDS_ATTR(led_notification_ramp_up),
+    LEDS_ATTR(led_notification_ramp_down),
     LEDS_ATTR(led_notification_delay_on),
     LEDS_ATTR(led_notification_delay_off),
 };
