@@ -122,6 +122,7 @@ static unsigned int lcdtype_color;
 static struct leds_control {
     u8 	current_low;
     u8 	current_high;
+    u16 	noti_ramp_control;
     u16 	noti_ramp_up;
     u16 	noti_ramp_down;
     u16 	noti_delay_on;
@@ -129,8 +130,9 @@ static struct leds_control {
 } leds_control = {
     .current_low = 5,
     .current_high = 40,
+    .noti_ramp_control = 0,
     .noti_ramp_up = 800,
-    .noti_ramp_down = 800,
+    .noti_ramp_down = 1000,
     .noti_delay_on = 500,
     .noti_delay_off = 5000,
 };
@@ -434,7 +436,7 @@ static ssize_t store_max77843_rgb_lowpower(struct device *dev,
     max77843_rgb_set_state(&max77843_rgb->led[RED], led_dynamic_current, LED_BLINK);
     max77843_rgb_set_state(&max77843_rgb->led[GREEN], led_dynamic_current, LED_BLINK);
     max77843_rgb_set_state(&max77843_rgb->led[BLUE], led_dynamic_current, LED_BLINK);
-	pr_info("led_lowpower mode set to %i, led_dynamic_current set to %d\n", led_lowpower, led_dynamic_current);
+
 	dev_dbg(dev, "led_lowpower mode set to %i\n", led_lowpower);
 
 	return count;
@@ -495,31 +497,30 @@ static ssize_t store_max77843_rgb_pattern(struct device *dev,
 		max77843_rgb_set_state(&max77843_rgb->led[RED], led_dynamic_current, LED_ALWAYS_ON);
 		break;
 	case CHARGING_ERR:
+	if (leds_control.noti_ramp_control == 1)
+		max77843_rgb_ramp(dev, leds_control.noti_ramp_up, leds_control.noti_ramp_down);
 		max77843_rgb_blink(dev, 500, 500);
 		max77843_rgb_set_state(&max77843_rgb->led[RED], led_dynamic_current, LED_BLINK);
 		break;
 	case MISSED_NOTI:
-
-		max77843_rgb_blink(dev, 500, 5000);
-			max77843_rgb_set_state(&max77843_rgb->led[BLUE], led_dynamic_current, LED_BLINK);
-
+	if (leds_control.noti_ramp_control == 1)
         max77843_rgb_ramp(dev, leds_control.noti_ramp_up, leds_control.noti_ramp_down);
 		max77843_rgb_blink(dev, leds_control.noti_delay_on, leds_control.noti_delay_off);
-		if(led_lowpower_mode == 1)
-			max77843_rgb_set_state(&max77843_rgb->led[BLUE], 0x0a, LED_BLINK);
-		else
-			max77843_rgb_set_state(&max77843_rgb->led[BLUE], 0x32, LED_BLINK);
+		max77843_rgb_set_state(&max77843_rgb->led[BLUE], led_dynamic_current, LED_BLINK);
 		break;
 	case LOW_BATTERY:
-		max77843_rgb_blink(dev, 500, 5000);
+	if (leds_control.noti_ramp_control == 1)
+        max77843_rgb_ramp(dev, leds_control.noti_ramp_up, leds_control.noti_ramp_down);
+		max77843_rgb_blink(dev, leds_control.noti_delay_on, leds_control.noti_delay_off);
 		max77843_rgb_set_state(&max77843_rgb->led[RED], led_dynamic_current, LED_BLINK);
 		break;
 	case FULLY_CHARGED:
 		max77843_rgb_set_state(&max77843_rgb->led[GREEN], led_dynamic_current, LED_ALWAYS_ON);
 		break;
 	case POWERING:
-		max77843_rgb_ramp(dev, 800, 800);
-		max77843_rgb_blink(dev, 200, 200);
+	if (leds_control.noti_ramp_control == 1)
+        max77843_rgb_ramp(dev, leds_control.noti_ramp_up, leds_control.noti_ramp_down);
+		max77843_rgb_blink(dev, leds_control.noti_delay_on, leds_control.noti_delay_off);
 		max77843_rgb_set_state(&max77843_rgb->led[BLUE], led_dynamic_current, LED_ALWAYS_ON);
 		max77843_rgb_set_state(&max77843_rgb->led[GREEN], led_dynamic_current, LED_BLINK);
 		break;
@@ -572,12 +573,15 @@ static ssize_t store_max77843_rgb_blink(struct device *dev,
 		max77843_rgb_set_state(&max77843_rgb->led[BLUE], led_b_brightness, LED_BLINK);
 	}
 	/*Set LED blink mode*/
-	max77843_rgb_blink(dev, delay_on_time, delay_off_time);
+	if (leds_control.noti_ramp_control == 1)
+		max77843_rgb_ramp(dev, leds_control.noti_ramp_up, leds_control.noti_ramp_down);
 
-	pr_info("leds-max77843-rgb: %s\n", __func__);
-	dev_dbg(dev, "led_blink is called, Color:0x%X Brightness:%i\n",
-			led_brightness, led_dynamic_current);
-	return count;
+		max77843_rgb_blink(dev, delay_on_time, delay_off_time);
+
+		pr_info("leds-max77843-rgb: %s\n", __func__);
+		dev_dbg(dev, "led_blink is called, Color:0x%X Brightness:%i\n",
+				led_brightness, led_dynamic_current);
+		return count;
 }
 
 static ssize_t store_led_r(struct device *dev,
@@ -758,6 +762,7 @@ static ssize_t store_leds_property(struct device *dev,
 static struct device_attribute leds_control_attrs[] = {
     LEDS_ATTR(led_lowpower_current),
     LEDS_ATTR(led_highpower_current),
+    LEDS_ATTR(led_notification_ramp_control),
     LEDS_ATTR(led_notification_ramp_up),
     LEDS_ATTR(led_notification_ramp_down),
     LEDS_ATTR(led_notification_delay_on),
@@ -767,6 +772,7 @@ static struct device_attribute leds_control_attrs[] = {
 enum {
     LOWPOWER_CURRENT = 0,
     HIGHPOWER_CURRENT,
+    NOTIFICATION_RAMP_CONTROL,
     NOTIFICATION_RAMP_UP,
     NOTIFICATION_RAMP_DOWN,
     NOTIFICATION_DELAY_ON,
@@ -783,6 +789,8 @@ static ssize_t show_leds_property(struct device *dev,
             return sprintf(buf, "%d", leds_control.current_low);
         case HIGHPOWER_CURRENT:
             return sprintf(buf, "%d", leds_control.current_high);
+        case NOTIFICATION_RAMP_CONTROL:
+            return sprintf(buf, "%d", leds_control.noti_ramp_control);
         case NOTIFICATION_RAMP_UP:
             return sprintf(buf, "%d", leds_control.noti_ramp_up);
         case NOTIFICATION_RAMP_DOWN:
@@ -814,6 +822,26 @@ static ssize_t store_leds_property(struct device *dev,
         case HIGHPOWER_CURRENT:
             sanitize_min_max(val, 0, LED_MAX_CURRENT);
             leds_control.current_high = val;
+            break;
+        case NOTIFICATION_RAMP_CONTROL:
+            sanitize_min_max(val, 0, 1);
+            leds_control.noti_ramp_control = val;
+            break;
+        case NOTIFICATION_RAMP_UP:
+           	sanitize_min_max(val, 0, 2000);
+            leds_control.noti_ramp_up = val;
+            break;
+        case NOTIFICATION_RAMP_DOWN:
+            sanitize_min_max(val, 0, 2000);
+            leds_control.noti_ramp_down = val;
+            break;
+		case NOTIFICATION_DELAY_ON:
+            sanitize_min_max(val, 0, 10000);
+            leds_control.noti_delay_on = val;
+            break;
+        case NOTIFICATION_DELAY_OFF:
+            sanitize_min_max(val, 0, 10000);
+            leds_control.noti_delay_off = val;
             break;
     }
     
