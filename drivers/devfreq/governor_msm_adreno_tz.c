@@ -21,7 +21,6 @@
 #include <linux/msm_adreno_devfreq.h>
 #include <linux/powersuspend.h>
 #include <soc/qcom/scm.h>
-#include "governor.h"
 
 static DEFINE_SPINLOCK(tz_lock);
 
@@ -49,6 +48,9 @@ static DEFINE_SPINLOCK(tz_lock);
 #define TZ_INIT_ID		0x6
 
 #define TAG "msm_adreno_tz: "
+
+/* Boolean to detect if pm has entered suspend mode */
+static bool suspended = false;
 
 /* Boolean to detect if pm has entered suspend mode */
 static bool suspended = false;
@@ -134,7 +136,7 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 	 * entered pm-suspend or screen-off state.
 	 */
 	if (suspended || power_suspended) {
-		*freq = devfreq->min_freq;
+		*freq = devfreq->profile->freq_table[devfreq->profile->max_state - 1];
 		return 0;
 	}
 
@@ -348,18 +350,15 @@ static int tz_suspend(struct devfreq *devfreq)
 
 	suspended = true;
 
-	freq = profile->initial_freq;
-
-	profile->target(devfreq->dev.parent, &freq, 0);
-
-	__secure_tz_entry2(TZ_RESET_ID, 0, 0);
-
 	priv->bin.total_time = 0;
 	priv->bin.busy_time = 0;
 	priv->bus.total_time = 0;
 	priv->bus.gpu_time = 0;
 	priv->bus.ram_time = 0;
-	return 0;
+
+	freq = profile->freq_table[profile->max_state - 1];
+
+	return profile->target(devfreq->dev.parent, &freq, 0);
 }
 
 static int tz_handler(struct devfreq *devfreq, unsigned int event, void *data)
