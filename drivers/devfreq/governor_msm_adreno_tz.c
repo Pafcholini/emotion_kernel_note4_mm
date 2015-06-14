@@ -21,6 +21,7 @@
 #include <linux/msm_adreno_devfreq.h>
 #include <linux/powersuspend.h>
 #include <soc/qcom/scm.h>
+#include "governor.h"
 
 static DEFINE_SPINLOCK(tz_lock);
 
@@ -48,9 +49,6 @@ static DEFINE_SPINLOCK(tz_lock);
 #define TZ_INIT_ID		0x6
 
 #define TAG "msm_adreno_tz: "
-
-/* Boolean to detect if pm has entered suspend mode */
-static bool suspended = false;
 
 /* Boolean to detect if pm has entered suspend mode */
 static bool suspended = false;
@@ -169,6 +167,7 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 	}
 
 	level = devfreq_get_freq_level(devfreq, stats.current_frequency);
+
 	if (level < 0) {
 		pr_err(TAG "bad freq %ld\n", stats.current_frequency);
 		return level;
