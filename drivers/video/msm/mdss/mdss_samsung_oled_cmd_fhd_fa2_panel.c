@@ -25,6 +25,9 @@
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
 
 #include "mdss_dsi.h"
 #include "mdss_samsung_oled_cmd_fhd_fa2_panel.h"
@@ -2121,6 +2124,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_POWERSUSPEND
+    set_power_suspend_state_panel_hook(POWER_SUSPEND_INACTIVE);
+#endif
+
 	pr_info("%s : ++\n", __func__);
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
@@ -2281,6 +2288,9 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 end:
 	pr_info("%s : --\n",__func__);
+#ifdef CONFIG_POWERSUSPEND
+    set_power_suspend_state_panel_hook(POWER_SUSPEND_ACTIVE);
+#endif
 	return 0;
 }
 

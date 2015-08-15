@@ -57,7 +57,6 @@
 #include "mdss_mdp.h"
 #include "mdss_debug.h"
 
-
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
 #else
