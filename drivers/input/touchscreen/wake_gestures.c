@@ -45,6 +45,7 @@
 #define S2W_DEFAULT		0
 #define S2S_DEFAULT		0
 #define DT2W_DEFAULT	0
+#define DT2S_DEFAULT	0
 #define WG_PWRKEY_DUR           60
 
 /* shamu */
@@ -59,8 +60,11 @@
 #define SWEEP_X_START		720
 #define SWEEP_X_FINAL           360
 #define SWEEP_Y_NEXT            180
+#define DT2S_Y_LIMIT	100
 #define DT2W_FEATHER		200
+#define DT2S_FEATHER		150
 #define DT2W_TIME 		700
+#define DT2S_TIME		250
 
 /* Wake Gestures */
 #define SWEEP_TIMEOUT		30
@@ -84,6 +88,7 @@ static struct input_dev *gesture_dev;
 int s2w_switch = S2W_DEFAULT;
 int dt2w_switch = DT2W_DEFAULT;
 static int s2s_switch = S2S_DEFAULT;
+static int dt2s_switch = DT2S_DEFAULT;
 static int touch_x = 0, touch_y = 0;
 static bool touch_x_called = false, touch_y_called = false;
 static bool scr_suspended = false, exec_countx = true, exec_county = true, exec_count = true;
@@ -99,8 +104,10 @@ static struct input_dev * wake_dev;
 static DEFINE_MUTEX(pwrkeyworklock);
 static struct workqueue_struct *s2w_input_wq;
 static struct workqueue_struct *dt2w_input_wq;
+static struct workqueue_struct *dt2s_input_wq;
 static struct work_struct s2w_input_work;
 static struct work_struct dt2w_input_work;
+static struct work_struct dt2s_input_work;
 
 void wg_setdev(struct input_dev * input_device) {
 	wake_dev = input_device;
@@ -153,9 +160,6 @@ static int __init read_dt2w_cmdline(char *dt2w)
 	if (strcmp(dt2w, "1") == 0) {
 		pr_info("[cmdline_dt2w]: DoubleTap2Wake enabled. | dt2w='%s'\n", dt2w);
 		dt2w_switch = 1;
-	} else if (strcmp(dt2w, "2") == 0) {
-		pr_info("[cmdline_dt2w]: DoubleTap2Sleep enabled. | dt2w='%s'\n", dt2w);
-		dt2w_switch = 2;
 	} else if (strcmp(dt2w, "0") == 0) {
 		pr_info("[cmdline_dt2w]: DoubleTap2Wake disabled. | dt2w='%s'\n", dt2w);
 		dt2w_switch = 0;
@@ -203,7 +207,7 @@ static void detect_doubletap2wake(int x, int y, bool st)
 	if (y < SWEEP_EDGE || y > SWEEP_Y_LIMIT)
        		return;
 
-	if ((single_touch) && (dt2w_switch == 1) && (scr_suspended == true) && (exec_count) && (touch_cnt) || (single_touch) && (dt2w_switch == 2) && (exec_count) && (touch_cnt)) {
+	if ((single_touch) && (dt2w_switch == 1) && (scr_suspended) && (exec_count) && (touch_cnt)) {
 		touch_cnt = false;
 		if (touch_nr == 0) {
 			new_touch(x, y);
@@ -237,6 +241,50 @@ static void detect_doubletap2wake(int x, int y, bool st)
 	}
 }
 
+static void detect_doubletap2sleep(int x, int y, bool st)
+{
+        bool single_touch = st;
+#if WG_DEBUG
+        pr_debug(LOGTAG"x,y(%4d,%4d) tap_time_pre:%llu\n",
+                x, y, tap_time_pre);
+#endif
+	
+	if (!scr_suspended && y > DT2S_Y_LIMIT)
+   		return;	
+
+   	if (single_touch && dt2s_switch == 1 && !scr_suspended && exec_count && touch_cnt) {
+		touch_cnt = false;
+		if (touch_nr == 0) {
+			new_touch(x, y);
+		} else if (touch_nr == 1) {
+			if ((calc_feather(x, x_pre) < DT2S_FEATHER) &&
+			    (calc_feather(y, y_pre) < DT2S_FEATHER) &&
+			    ((ktime_to_ms(ktime_get())-tap_time_pre) < DT2S_TIME))
+				touch_nr++;
+			else {
+				doubletap2wake_reset();
+				new_touch(x, y);
+			}
+		} else {
+			doubletap2wake_reset();
+			new_touch(x, y);
+		}
+		if ((touch_nr > 1)) {
+			pr_debug(LOGTAG"double tap\n");
+			exec_count = false;
+#if (WAKE_GESTURES_ENABLED)
+			if (gestures_switch) {
+				report_gesture(6);
+			} else {
+#endif
+				wake_pwrtrigger();
+#if (WAKE_GESTURES_ENABLED)
+			}
+#endif
+			doubletap2wake_reset();
+		}
+	}
+}
 /* Sweep2wake/Sweep2sleep */
 
 static void sweep2wake_reset(void) {
@@ -441,6 +489,12 @@ static void dt2w_input_callback(struct work_struct *unused)
 	return;
 }
 
+static void dt2s_input_callback(struct work_struct *unused)
+{
+		detect_doubletap2sleep(touch_x, touch_y, true);
+	return;
+}
+
 static void wg_input_event(struct input_handle *handle, unsigned int type,
 				unsigned int code, int value)
 {
@@ -462,6 +516,7 @@ static void wg_input_event(struct input_handle *handle, unsigned int type,
 		sweep2wake_reset();
 		touch_cnt = true;
 		queue_work_on(0, dt2w_input_wq, &dt2w_input_work);
+		queue_work_on(0, dt2s_input_wq, &dt2s_input_work);
 		return;
 	}
 
@@ -643,6 +698,33 @@ static ssize_t doubletap2wake_dump(struct device *dev,
 static DEVICE_ATTR(doubletap2wake, (S_IWUSR|S_IRUGO),
 	doubletap2wake_show, doubletap2wake_dump);
 
+static ssize_t doubletap2sleep_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	size_t count = 0;
+
+	count += sprintf(buf, "%d\n", dt2s_switch);
+
+	return count;
+}
+
+static ssize_t doubletap2sleep_dump(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+
+	sscanf(buf, "%d ", &dt2s_switch);
+	if (dt2s_switch < 0 || dt2s_switch > 1)
+		dt2s_switch = 0;	
+
+	if (s2s_switch == 0)
+		dt2s_switch > 0;		
+	
+	return count;
+}
+
+static DEVICE_ATTR(doubletap2sleep, (S_IWUSR|S_IRUGO),
+	doubletap2sleep_show, doubletap2sleep_dump);
+
 #if (WAKE_GESTURES_ENABLED)
 static ssize_t wake_gestures_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -692,6 +774,14 @@ static int __init wake_gestures_init(void)
 		return -EFAULT;
 	}
 	INIT_WORK(&dt2w_input_work, dt2w_input_callback);
+
+	dt2s_input_wq = create_workqueue("dt2siwq");
+	if (!dt2s_input_wq) {
+		pr_err("%s: Failed to create dt2siwq workqueue\n", __func__);
+		return -EFAULT;
+	}
+	INIT_WORK(&dt2s_input_work, dt2s_input_callback);
+
 		
 #ifdef CONFIG_POWERSUSPEND
 	register_power_suspend(&wk_power_suspend_handler);
@@ -731,6 +821,10 @@ static int __init wake_gestures_init(void)
 	if (rc) {
 		pr_warn("%s: sysfs_create_file failed for doubletap2wake\n", __func__);
 	}
+		rc = sysfs_create_file(android_touch_kobj, &dev_attr_doubletap2sleep.attr);
+	if (rc) {
+		pr_warn("%s: sysfs_create_file failed for doubletap2sleep\n", __func__);
+	}
 
 #if (WAKE_GESTURES_ENABLED)
 	rc = sysfs_create_file(android_touch_kobj, &dev_attr_wake_gestures.attr);
@@ -754,6 +848,7 @@ static void __exit wake_gestures_exit(void)
 	input_unregister_handler(&wg_input_handler);
 	destroy_workqueue(s2w_input_wq);
 	destroy_workqueue(dt2w_input_wq);
+	destroy_workqueue(dt2s_input_wq);
 	input_free_device(wake_dev);
 #ifdef CONFIG_POWERSUSPEND
 	unregister_power_suspend(&wk_power_suspend_handler);
