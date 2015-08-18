@@ -118,6 +118,7 @@ static bool flg_sensor_prox_detecting = false;
 extern bool flg_power_suspended;
 extern struct timeval time_power_suspended;
 extern struct timeval time_pressed_power;
+extern bool flg_tsp_always_on;
 
 static struct input_dev * wake_dev;
 static DEFINE_MUTEX(pwrkeyworklock);
@@ -772,6 +773,13 @@ static struct input_handler wg_input_handler = {
 static void wk_power_suspend(struct power_suspend *h) {
 	// suspend.
 	pr_info(LOGTAG"] SUSPEND - \n");
+
+	// check to see if we should let the tsp sleep.
+	if (sttg_tw_timeout || dt2w_switch || s2w_switch) {
+		flg_tsp_always_on = true;
+	} else {
+		flg_tsp_always_on = false;
+	}
 	
 	// touchwake.
 	if (sttg_tw_timeout > 0 && !flg_sensor_prox_detecting) {

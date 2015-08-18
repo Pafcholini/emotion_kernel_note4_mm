@@ -74,6 +74,8 @@
 struct wake_lock  report_wake_lock;
 #endif
 
+#define FTS_I2C_RETRY 10
+
 #ifdef FTS_SUPPORT_TOUCH_KEY
 struct fts_touchkey fts_touchkeys[] = {
 	{
@@ -94,6 +96,8 @@ extern int boot_mode_recovery;
 #ifdef CONFIG_SAMSUNG_LPM_MODE
 extern int poweroff_charging;
 #endif
+
+bool flg_tsp_always_on = false;
 
 #ifdef USE_OPEN_CLOSE
 static int fts_input_open(struct input_dev *dev);
@@ -258,12 +262,22 @@ static ssize_t fts_secure_touch_show(struct device *dev,
 }
 #endif
 
+static unsigned int wk_lpm_override(void)
+{
+	if (flg_tsp_always_on) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 static int fts_write_reg(struct fts_ts_info *info,
 		  unsigned char *reg, unsigned short num_com)
 {
 	struct i2c_msg xfer_msg[2];
 	struct i2c_client *client;
 	int ret;
+	int retry = 0;
 
 	if (info->touch_stopped) {
 		dev_err(&info->client->dev, "%s: Sensor stopped\n", __func__);
@@ -282,11 +296,15 @@ static int fts_write_reg(struct fts_ts_info *info,
 	xfer_msg[0].flags = 0;
 	xfer_msg[0].buf = reg;
 
-	ret = i2c_transfer(client->adapter, xfer_msg, 1);
-	if (ret < 0)
-		dev_err(&client->dev, "%s failed. ret: %d, addr: %x\n",
-					__func__, ret, xfer_msg[0].addr);
-
+for (retry = 0; retry <= FTS_I2C_RETRY; retry++) {
+		ret = i2c_transfer(info->client->adapter, xfer_msg, 1);
+		if (ret == 1) {
+			goto out;
+		} else
+			msleep(10);
+	}
+ 
+ out:
 	mutex_unlock(&info->i2c_mutex);
 	return ret;
 
@@ -300,8 +318,8 @@ static int fts_read_reg(struct fts_ts_info *info, unsigned char *reg, int cnum,
 	struct i2c_msg xfer_msg[2];
 	struct i2c_client *client;
 	int ret;
-	int retry = 3;
-
+	int retry = 0;
+	
 	if (info->touch_stopped) {
 		dev_err(&info->client->dev, "%s: Sensor stopped\n", __func__);
 		goto exit;
@@ -323,16 +341,15 @@ static int fts_read_reg(struct fts_ts_info *info, unsigned char *reg, int cnum,
 	xfer_msg[1].flags = I2C_M_RD;
 	xfer_msg[1].buf = buf;
 
-	do{
-	ret = i2c_transfer(client->adapter, xfer_msg, 2);
-		if (ret < 0){
-			dev_err(&client->dev, "%s failed(%d). ret:%d, addr:%x\n", __func__,retry, ret, xfer_msg[0].addr);
+	for (retry = 0; retry <= FTS_I2C_RETRY; retry++) {
+		ret = i2c_transfer(info->client->adapter, xfer_msg, 2);
+		if (ret == 2) {
+			goto out;
+		} else
 			msleep(10);
-		}else{
-			break;
-		}
-	}while(--retry>0);
-
+	}
+ 
+ out:
 	mutex_unlock(&info->i2c_mutex);
 	return ret;
 
@@ -386,6 +403,7 @@ static int fts_write_to_string(struct fts_ts_info *info,
 	struct i2c_msg xfer_msg[3];
 	unsigned char *regAdd;
 	int ret;
+	int retry = 0;
 
 	if (info->touch_stopped) {
 		   dev_err(&info->client->dev, "%s: Sensor stopped\n", __func__);
@@ -427,7 +445,14 @@ static int fts_write_to_string(struct fts_ts_info *info,
 	xfer_msg[1].buf = &regAdd[3];
 /* msg[1], length 4*/
 
-	ret = i2c_transfer(info->client->adapter, xfer_msg, 2);
+	for (retry = 0; retry <= FTS_I2C_RETRY; retry++) {
+		ret = i2c_transfer(info->client->adapter, xfer_msg, 2);
+		if (ret == 2)
+			break;
+		else
+			msleep(10);
+	}
+
 	if (ret == 2) {
 		dev_info(&info->client->dev,
 				"%s: string command is OK.\n", __func__);
@@ -441,7 +466,14 @@ static int fts_write_to_string(struct fts_ts_info *info,
 		xfer_msg[0].flags = 0;
 		xfer_msg[0].buf = regAdd;
 
-		ret = i2c_transfer(info->client->adapter, xfer_msg, 1);
+		for (retry = 0; retry <= FTS_I2C_RETRY; retry++) {
+			ret = i2c_transfer(info->client->adapter, xfer_msg, 1);
+			if (ret == 1)
+				break;
+			else
+				msleep(10);
+		}
+
 		if (ret != 1)
 			dev_info(&info->client->dev,
 					"%s: string notify is failed.\n", __func__);
@@ -1225,21 +1257,21 @@ static unsigned char fts_event_handler_type_b(struct fts_ts_info *info,
 			break;
 
 		case EVENTID_ENTER_POINTER:
-			/*
-			if(info->fts_power_mode == FTS_POWER_STATE_LOWPOWER){
+			
+			if(!flg_tsp_always_on && info->fts_power_mode == FTS_POWER_STATE_LOWPOWER){
 				break;
 			}
-			*/
+			
 			info->touch_count++;
 
 		case EVENTID_MOTION_POINTER:
-			/*
-			if(info->fts_power_mode == FTS_POWER_STATE_LOWPOWER){
+			
+			if(!flg_tsp_always_on && info->fts_power_mode == FTS_POWER_STATE_LOWPOWER){
 				dev_err(&info->client->dev, "%s %d: low power mode\n", __func__, __LINE__);
 				fts_release_all_finger(info);
 				break;
 			}
-			*/
+			
 			if (info->touch_count == 0) {
 				dev_err(&info->client->dev, "%s %d: count 0\n", __func__, __LINE__);
 				fts_release_all_finger(info);
@@ -1299,11 +1331,11 @@ static unsigned char fts_event_handler_type_b(struct fts_ts_info *info,
 			break;
 
 		case EVENTID_LEAVE_POINTER:
-			/*
-			if(info->fts_power_mode == FTS_POWER_STATE_LOWPOWER){
+			
+			if(!flg_tsp_always_on && info->fts_power_mode == FTS_POWER_STATE_LOWPOWER){
 				break;
 			}
-			*/
+			
 			if (info->touch_count <= 0) {
 				dev_err(&info->client->dev, "%s %d: count 0\n", __func__, __LINE__);
 				fts_release_all_finger(info);
@@ -1493,29 +1525,44 @@ static unsigned char fts_event_handler_type_b(struct fts_ts_info *info,
 #endif
 
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
-		if (EventID == EVENTID_ENTER_POINTER) {
-			/*dev_info(&info->client->dev,
+		if (EventID == EVENTID_ENTER_POINTER)
+			dev_info(&info->client->dev,
 				"[P] tID:%d x:%d y:%d w:%d h:%d z:%d s:%d p:%d tc:%d tm:%d\n",
-				TouchID, x, y, bw, bh, z, sumsize, palm, info->touch_count, info->touch_mode);*/
-		} else if (EventID == EVENTID_HOVER_ENTER_POINTER) {
-			/*dev_info(&info->client->dev,
+				TouchID, x, y, bw, bh, z, sumsize, palm, info->touch_count, info->touch_mode);
+		else if (EventID == EVENTID_HOVER_ENTER_POINTER)
+			dev_info(&info->client->dev,
 				"[HP] tID:%d x:%d y:%d z:%d\n",
-				TouchID, x, y, z);*/
+				TouchID, x, y, z);
 #else
 		if (EventID == EVENTID_ENTER_POINTER) {
-			"[P] tID:%d tc:%d tm:%d\n",
-				TouchID, info->touch_count, info->touch_mode);
-		} else if (EventID == EVENTID_HOVER_ENTER_POINTER) {
+			dev_info(&info->client->dev,
+				"[P] tID:%d loc:%c%c tc:%d tm:%d\n",
+				TouchID,
+				location_detect(info, y, 1), location_detect(info, x, 0),
+				info->touch_count, info->touch_mode);
+		}
+		else if (EventID == EVENTID_HOVER_ENTER_POINTER)
 			dev_info(&info->client->dev,
 				"[HP] tID:%d\n", TouchID);
 #endif
-		} else if (EventID == EVENTID_LEAVE_POINTER) {
-			/*dev_info(&info->client->dev,
-				"[R] tID:%d mc: %d tc:%d lx:%d ly:%d Ver[%02X%04X%01X%01X]\n",
+		else if (EventID == EVENTID_LEAVE_POINTER) {
+#if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
+			dev_info(&info->client->dev,
+				"[R] tID:%d mc: %d tc:%d lx:%d ly:%d Ver[%02X%04X%01X%01X%01X]\n",
 				TouchID, info->finger[TouchID].mcount, info->touch_count,
 				info->finger[TouchID].lx, info->finger[TouchID].ly,
 				info->panel_revision, info->fw_main_version_of_ic,
-				info->flip_enable, info->mshover_enabled);*/
+				info->flip_enable, info->mshover_enabled, info->mainscr_disable);
+#else
+			dev_info(&info->client->dev,
+				"[R] tID:%d loc:%c%c mc: %d tc:%d Ver[%02X%04X%01X%01X%01X]\n",
+				TouchID,
+				location_detect(info, info->finger[TouchID].ly, 1),
+				location_detect(info, info->finger[TouchID].lx, 0),
+				info->finger[TouchID].mcount, info->touch_count,
+				info->panel_revision, info->fw_main_version_of_ic,
+				info->flip_enable, info->mshover_enabled, info->mainscr_disable);
+#endif
 			info->finger[TouchID].mcount = 0;
 		}/* else if (EventID == EVENTID_HOVER_LEAVE_POINTER) {
 			if (info->hover_present) {
@@ -1712,7 +1759,7 @@ static int fts_irq_enable(struct fts_ts_info *info,
 		info->irq_enabled = true;
 	} else {
 		if (info->irq_enabled) {
-			disable_irq(info->irq);
+			disable_irq_nosync(info->irq);
 			free_irq(info->irq, info);
 			info->irq_enabled = false;
 		}
@@ -2783,11 +2830,8 @@ static void fts_secure_touch_stop(struct fts_ts_info *info, int blocking)
 
 static int fts_stop_device(struct fts_ts_info *info)
 {
-	if (s2w_switch > 0 || dt2w_switch == 1) {
-		info->lowpower_mode = true;
-	} else {
-		info->lowpower_mode = false;
-	}
+	info->lowpower_mode = wk_lpm_override();
+
 	dev_info(&info->client->dev, "%s %s\n",
 			__func__, info->lowpower_mode ? "enter low power mode" : "");
 
@@ -2833,8 +2877,14 @@ static int fts_stop_device(struct fts_ts_info *info)
 			fts_delay(20);
 		}
 #endif
-		fts_command(info, FTS_CMD_LOWPOWER_MODE);
+		if (!flg_tsp_always_on)
+			fts_command(info, FTS_CMD_LOWPOWER_MODE);
+
+#ifdef CONFIG_WAKE_GESTURES
+		if (flg_tsp_always_on || (!flg_tsp_always_on && device_may_wakeup(&info->client->dev)))
+#else
 		if (device_may_wakeup(&info->client->dev))
+#endif
 			enable_irq_wake(info->client->irq);
 
 		fts_command(info, FLUSHBUFFER);
@@ -2846,7 +2896,7 @@ static int fts_stop_device(struct fts_ts_info *info)
 
 	} else {
 		fts_interrupt_set(info, INT_DISABLE);
-		disable_irq(info->irq);
+		disable_irq_nosync(info->irq);
 
 		fts_command(info, FLUSHBUFFER);
 		fts_command(info, SLEEPIN);
@@ -2918,7 +2968,7 @@ static int fts_start_device(struct fts_ts_info *info)
 
 #ifdef FTS_ADDED_RESETCODE_IN_LPLM
 
-		disable_irq(info->irq);
+		disable_irq_nosync(info->irq);
 		info->reinit_done = false;
 
 		fts_reinit(info);
@@ -2946,7 +2996,12 @@ static int fts_start_device(struct fts_ts_info *info)
 #endif
 		fts_command(info, FLUSHBUFFER);
 #endif
+
+#ifdef CONFIG_WAKE_GESTURES
+		if (flg_tsp_always_on || (!flg_tsp_always_on && device_may_wakeup(&info->client->dev)))
+#else
 		if (device_may_wakeup(&info->client->dev))
+#endif
 			disable_irq_wake(info->client->irq);
 
 	} else {
@@ -3058,11 +3113,15 @@ static void fts_reset_work(struct work_struct *work)
 	unsigned short addr = FTS_CMD_STRING_ACCESS;
 	dev_info(&info->client->dev, "%s\n", __func__);
 
-	if (device_may_wakeup(&info->client->dev))
+#ifdef CONFIG_WAKE_GESTURES
+		if (flg_tsp_always_on || (!flg_tsp_always_on && device_may_wakeup(&info->client->dev)))
+#else
+		if (device_may_wakeup(&info->client->dev))
+#endif	
 		disable_irq_wake(info->client->irq);
 
 	fts_interrupt_set(info, INT_DISABLE);
-	disable_irq(info->irq);
+	disable_irq_nosync(info->irq);
 
 	fts_command(info, FLUSHBUFFER);
 	fts_command(info, SLEEPIN);
