@@ -25,8 +25,8 @@
 #include <linux/input.h>
 
 extern int s2w_switch;
-extern int s2w_switch_temp;
 extern int dt2w_switch;
+void set_vibrate(int value);
 void wg_setdev(struct input_dev *);
 
 #endif	/* _LINUX_WAKE_GESTURES_H */

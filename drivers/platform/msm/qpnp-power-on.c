@@ -28,6 +28,8 @@
 #include <linux/wake_gestures.h>
 #endif
 
+struct timeval time_pressed_power;
+
 #if defined(CONFIG_SEC_DEBUG)
 #include <mach/sec_debug.h>
 #endif
@@ -508,6 +510,11 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 		input_sync(pon->pon_input);
 	}
 
+	if (cfg->key_code == 116 && (key_status || (!cfg->old_state && !key_status))) {
+		// save when power was last pressed, for touchwake.
+		do_gettimeofday(&time_pressed_power);
+	}
+	
 	input_report_key(pon->pon_input, cfg->key_code, key_status);
 	input_sync(pon->pon_input);
 	pr_info("[KEY] code(0x%02X), value(%d)\n", cfg->key_code, key_status);
