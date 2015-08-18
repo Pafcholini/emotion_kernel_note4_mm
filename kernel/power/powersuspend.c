@@ -35,6 +35,9 @@
 
 //#define POWER_SUSPEND_DEBUG // Add debugging prints in dmesg
 
+bool flg_power_suspended = false;
+struct timeval time_power_suspended;
+struct timeval time_power_resumed;
 struct workqueue_struct *suspend_work_queue;
 
 static DEFINE_MUTEX(power_suspend_lock);
@@ -88,6 +91,9 @@ static void power_suspend(struct work_struct *work)
 	if (abort)
 		goto abort_suspend;
 
+	flg_power_suspended = true;
+	do_gettimeofday(&time_power_suspended);
+
 	#ifdef POWER_SUSPEND_DEBUG
 	pr_info("[POWERSUSPEND] suspending...\n");
 	#endif
@@ -120,6 +126,9 @@ static void power_resume(struct work_struct *work)
 
 	if (abort)
 		goto abort_resume;
+
+	flg_power_suspended = false;
+	do_gettimeofday(&time_power_resumed);
 
 	#ifdef POWER_SUSPEND_DEBUG
 	pr_info("[POWERSUSPEND] resuming...\n");
