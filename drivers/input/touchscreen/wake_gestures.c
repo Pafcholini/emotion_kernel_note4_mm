@@ -700,6 +700,7 @@ static void wg_input_event(struct input_handle *handle, unsigned int type,
 		touch_x_called = false;
 		touch_y_called = false;
 		queue_work_on(0, s2w_input_wq, &s2w_input_work);
+		queue_work_on(0, s2s_input_wq, &s2s_input_work);
 	} else if (!flg_power_suspended && touch_x_called && !touch_y_called) {
 		touch_x_called = false;
 		touch_y_called = false;
