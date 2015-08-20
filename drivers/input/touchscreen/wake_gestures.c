@@ -122,10 +122,6 @@ extern bool flg_tsp_always_on;
 
 static struct input_dev * wake_dev;
 static DEFINE_MUTEX(pwrkeyworklock);
-static struct workqueue_struct *s2w_input_wq;
-static struct workqueue_struct *s2s_input_wq;
-static struct workqueue_struct *dt2w_input_wq;
-static struct workqueue_struct *dt2s_input_wq;
 static struct work_struct s2w_input_work;
 static struct work_struct s2s_input_work;
 static struct work_struct dt2w_input_work;
@@ -681,8 +677,8 @@ static void wg_input_event(struct input_handle *handle, unsigned int type,
 	if (code == ABS_MT_TRACKING_ID && value == -1) {
 		sweep2wake_reset();
 		touch_cnt = true;
-		queue_work_on(0, dt2w_input_wq, &dt2w_input_work);
-		queue_work_on(0, dt2s_input_wq, &dt2s_input_work);
+		schedule_work_on(0, &dt2w_input_work);
+		schedule_work_on(0, &dt2s_input_work);
 		return;
 	}
 
@@ -699,13 +695,13 @@ static void wg_input_event(struct input_handle *handle, unsigned int type,
 	if (touch_x_called && touch_y_called) {
 		touch_x_called = false;
 		touch_y_called = false;
-		queue_work_on(0, s2w_input_wq, &s2w_input_work);
-		queue_work_on(0, s2s_input_wq, &s2s_input_work);
+		schedule_work_on(0, &s2w_input_work);
+		schedule_work_on(0, &s2s_input_work);
 	} else if (!flg_power_suspended && touch_x_called && !touch_y_called) {
 		touch_x_called = false;
 		touch_y_called = false;
-		queue_work_on(0, s2w_input_wq, &s2w_input_work);
-		queue_work_on(0, s2s_input_wq, &s2s_input_work);
+		schedule_work_on(0, &s2w_input_work);
+		schedule_work_on(0, &s2s_input_work);
 	}
 }
 
@@ -1046,32 +1042,12 @@ static int __init wake_gestures_init(void)
 	if (rc)
 		pr_err("%s: Failed to register wg_input_handler\n", __func__);
 
-	s2w_input_wq = create_workqueue("s2wiwq");
-	if (!s2w_input_wq) {
-		pr_err("%s: Failed to create s2wiwq workqueue\n", __func__);
-		return -EFAULT;
-	}
 	INIT_WORK(&s2w_input_work, s2w_input_callback);
 	
-	s2s_input_wq = create_workqueue("s2siwq");
-	if (!s2s_input_wq) {
-		pr_err("%s: Failed to create s2siwq workqueue\n", __func__);
-		return -EFAULT;
-	}
 	INIT_WORK(&s2s_input_work, s2s_input_callback);
 	
-	dt2w_input_wq = create_workqueue("dt2wiwq");
-	if (!dt2w_input_wq) {
-		pr_err("%s: Failed to create dt2wiwq workqueue\n", __func__);
-		return -EFAULT;
-	}
 	INIT_WORK(&dt2w_input_work, dt2w_input_callback);
 
-	dt2s_input_wq = create_workqueue("dt2siwq");
-	if (!dt2s_input_wq) {
-		pr_err("%s: Failed to create dt2siwq workqueue\n", __func__);
-		return -EFAULT;
-	}
 	INIT_WORK(&dt2s_input_work, dt2s_input_callback);
 
 		
@@ -1154,10 +1130,6 @@ static void __exit wake_gestures_exit(void)
 {
 	kobject_del(android_touch_kobj);
 	input_unregister_handler(&wg_input_handler);
-	destroy_workqueue(s2w_input_wq);
-	destroy_workqueue(s2s_input_wq);
-	destroy_workqueue(dt2w_input_wq);
-	destroy_workqueue(dt2s_input_wq);
 	input_free_device(wake_dev);
 #ifdef CONFIG_POWERSUSPEND
 	unregister_power_suspend(&wk_power_suspend_handler);
