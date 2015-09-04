@@ -77,9 +77,9 @@ static u64 zswap_duplicate_entry;
 /*********************************
 * tunables
 **********************************/
-/* Enable/disable zswap (enabled by default, fixed at boot for now) */
+/* Enable/disable zswap (enabled by default) */
 static bool zswap_enabled = 1;
-module_param_named(enabled, zswap_enabled, bool, 0);
+module_param_named(enabled, zswap_enabled, bool, 0644);
 
 /* Compressor to be used by zswap (fixed at boot for now) */
 #define ZSWAP_COMPRESSOR_DEFAULT "lzo"
@@ -410,7 +410,7 @@ static inline void zswap_page_pool_destroy(void)
 	mempool_destroy(zswap_page_pool);
 }
 
-static struct page *zswap_alloc_page(gfp_t flags)
+/*static struct page *zswap_alloc_page(gfp_t flags)
 {
 	struct page *page;
 
@@ -435,7 +435,7 @@ static void zswap_free_page(struct page *page)
 static struct zs_ops zswap_zs_ops = {
 	.alloc = zswap_alloc_page,
 	.free = zswap_free_page
-};
+};*/
 
 
 /*********************************
@@ -783,6 +783,9 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 #ifdef CONFIG_ZSWAP_ENABLE_WRITEBACK
 	u8 *tmpdst;
 #endif
+	
+	if (!zswap_enabled)
+		return -EPERM;
 
 	if (!tree) {
 		ret = -ENODEV;
@@ -1130,8 +1133,6 @@ static inline void __exit zswap_debugfs_exit(void) { }
 **********************************/
 static int __init init_zswap(void)
 {
-	if (!zswap_enabled)
-		return 0;
 
 	pr_info("loading zswap\n");
 	if (zswap_entry_cache_create()) {
