@@ -25,3 +25,5 @@ obj-$(CONFIG_CHARGER_MAX77804K)	+= max77804k_charger.o
 obj-$(CONFIG_CHARGER_MAX77888)  += max77888_charger.o
 obj-$(CONFIG_CHARGER_MAX77823)	+= max77823_charger.o
 obj-$(CONFIG_CHARGER_MAX77843)	+= max77843_charger.o
+obj-$(CONFIG_FORCE_FAST_CHARGE) += fastchg.o
+
