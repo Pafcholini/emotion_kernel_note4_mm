@@ -112,7 +112,7 @@ static inline unsigned int cmp_sec_integrity(void)
 			(current->mm->pgd != current->cred->bp_pgd)));
 			
 }
-inline void rkp_print_debug(void)
+static inline void rkp_print_debug(void)
 {
 	printk(KERN_ERR"\nRKP current = %p cred = %p bp_task = %p bp_pgd = %p mm =%p \n",current,current->cred,current->cred->bp_task,current->cred->bp_pgd,current->mm);
 	if(current->mm)

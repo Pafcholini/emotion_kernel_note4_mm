@@ -107,7 +107,7 @@ extern int checkDualWaveStatus(void);
 char *g_szSysTime;
 char *g_szRefTime;	
 
-inline void UpdateTime(char *pchBuffer, int iLen)
+static inline void UpdateTime(char *pchBuffer, int iLen)
 {
 	struct timespec tSysTimespec;
 	char *pEnv[3];

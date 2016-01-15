@@ -296,7 +296,7 @@ static inline ssize_t vfsspi_writeSync(struct vfsspi_devData *vfsSpiDev,
 }
 
 /* Return no.of bytes read >0. negative integer incase of error. */
-inline ssize_t vfsspi_readSync(struct vfsspi_devData *vfsSpiDev,
+static inline ssize_t vfsspi_readSync(struct vfsspi_devData *vfsSpiDev,
 	unsigned char *buf, size_t len)
 {
 	int status = 0;
