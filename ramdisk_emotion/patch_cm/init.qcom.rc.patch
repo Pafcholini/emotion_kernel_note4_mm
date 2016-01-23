@@ -1,0 +1,26 @@
+From a6bced67f19ad7d49f32f9b797eae1f65202d4db Mon Sep 17 00:00:00 2001
+From: Pafcholini <nadyaivanova14@gmail.com>
+Date: Sat, 23 Jan 2016 21:12:26 +0100
+Subject: [PATCH] init.qcom.rc
+
+Signed-off-by: Pafcholini <nadyaivanova14@gmail.com>
+---
+ cm13/init.qcom.rc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/cm13/init.qcom.rc b/cm13/init.qcom.rc
+index a028807..de90d0d 100755
+--- a/cm13/init.qcom.rc
++++ b/cm13/init.qcom.rc
+@@ -32,7 +32,7 @@ on early-init
+     export LD_SHIM_LIBS /system/lib/libril.so|libril_shim.so:rmt_storage|librmt_shim.so
+ 
+     mount debugfs debugfs /sys/kernel/debug
+-    write /sys/block/mmcblk0/queue/scheduler noop
++    write /sys/block/mmcblk0/queue/scheduler cfq
+ 
+     mkdir /firmware 0771 system system
+     mkdir /firmware-modem 0771 system system
+-- 
+2.1.4
+
