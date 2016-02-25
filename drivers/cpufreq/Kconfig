@@ -120,6 +120,12 @@ config CPU_FREQ_DEFAULT_GOV_BLUACTIVE
 	help
 	Use the CPUFreq governor 'bluactive' as default.
 
+config CPU_FREQ_DEFAULT_GOV_ZZMOOVE
+	bool "zzmoove"
+	select CPU_FREQ_GOV_ZZMOOVE
+	help
+	Use the CPUFreq governor 'zzmoove' as default.
+
 config CPU_FREQ_DEFAULT_GOV_INTERACTIVE_PRO
 	bool "interactive_pro"
 	select CPU_FREQ_GOV_INTERACTIVE_PRO
@@ -229,6 +235,11 @@ config CPU_FREQ_GOV_BLUACTIVE
 	depends on CPU_FREQ
 	help
 	  'bluactive' - less aggressive version of conservative
+
+
+config CPU_FREQ_GOV_ZZMOOVE
+	   tristate "'zzmoove' cpufreq governor"
+	   depends on CPU_FREQ
 
 config CPU_FREQ_GOV_INTERACTIVE_PRO
 	tristate "'interactive_pro' cpufreq governor"
