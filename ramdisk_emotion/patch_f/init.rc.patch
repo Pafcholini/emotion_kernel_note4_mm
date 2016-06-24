@@ -1,35 +1,63 @@
-From 0cfb0868c8cd43e4ed8b950f1ef815bd60ee7df7 Mon Sep 17 00:00:00 2001
+From 419e484bf4d9ed09faaef8587e0b41ec9a38c1b0 Mon Sep 17 00:00:00 2001
 From: Pafcholini <nadyaivanova14@gmail.com>
-Date: Fri, 24 Jun 2016 13:30:33 +0200
-Subject: [PATCH 4/4] init.rc
+Date: Fri, 24 Jun 2016 15:50:22 +0200
+Subject: [PATCH 3/3] init.rc
 
 Signed-off-by: Pafcholini <nadyaivanova14@gmail.com>
 ---
- f/init.rc | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ f/init.rc | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
 
 diff --git a/f/init.rc b/f/init.rc
-index fc8c391..c4e43d4 100755
+index fc8c391..81735f5 100755
 --- a/f/init.rc
 +++ b/f/init.rc
 @@ -11,7 +11,6 @@ import /init.usb.configfs.rc
  import /init.${ro.zygote}.rc
  import /init.trace.rc
  import /init.carrier.rc
--import /init.container.rc
+ import /init.container.rc
  import /init.rilcommon.rc
  
  on early-init
-@@ -1869,3 +1868,9 @@ on property:service.vpnclientd.enable=1
+@@ -73,6 +72,7 @@ loglevel 3
+ 
+     mkdir /.system
+     mkdir /system
++    mkdir /su 0755 root root # create mount point for SuperSU
+     mkdir /data 0771 system system
+     mkdir /cache 0770 system cache
+     mkdir /config 0500 root root
+@@ -344,6 +344,12 @@ on post-fs-data
+     # We restorecon /data in case the userdata partition has been reset.
+     restorecon /data
+     restorecon /data/lost+found
++    
++    # mount SuperSU image
++    cp /cache/su.img /data/su.img
++    rm /cache/su.img
++    chmod 0600 /data/su.img
++    mount ext4 loop@/data/su.img /su noatime
+ 
+     # Emulated internal storage area
+     mkdir /data/media 0770 media_rw media_rw
+@@ -1869,3 +1875,16 @@ on property:service.vpnclientd.enable=1
  on property:service.vpnclientd.enable=0
      stop vpnclientd
  
++# launch SuperSU daemon
++service daemonsu /sbin/launch_daemonsu.sh
++    class late_start
++    user root
++    seclabel u:r:init:s0
++    oneshot
++    
 +# init Emotion Kernel
 +service emotioninit /sbin/emotion.sh
 +    class main
 +    user root
 +    oneshot
-+    
++       
 -- 
 2.5.0
 
