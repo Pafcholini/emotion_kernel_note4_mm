@@ -1,26 +1,18 @@
-From 419e484bf4d9ed09faaef8587e0b41ec9a38c1b0 Mon Sep 17 00:00:00 2001
+From 341b9abc5b7527926be344d9fb0fff98d679f61f Mon Sep 17 00:00:00 2001
 From: Pafcholini <nadyaivanova14@gmail.com>
-Date: Fri, 24 Jun 2016 15:50:22 +0200
-Subject: [PATCH 3/3] init.rc
+Date: Wed, 29 Jun 2016 14:09:30 +0200
+Subject: [PATCH] init.rc
 
 Signed-off-by: Pafcholini <nadyaivanova14@gmail.com>
 ---
- f/init.rc | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+ f/init.rc | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
 diff --git a/f/init.rc b/f/init.rc
-index fc8c391..81735f5 100755
+index fc8c391..aca4cd8 100755
 --- a/f/init.rc
 +++ b/f/init.rc
-@@ -11,7 +11,6 @@ import /init.usb.configfs.rc
- import /init.${ro.zygote}.rc
- import /init.trace.rc
- import /init.carrier.rc
- import /init.container.rc
- import /init.rilcommon.rc
- 
- on early-init
-@@ -73,6 +72,7 @@ loglevel 3
+@@ -73,6 +73,7 @@ loglevel 3
  
      mkdir /.system
      mkdir /system
@@ -28,20 +20,20 @@ index fc8c391..81735f5 100755
      mkdir /data 0771 system system
      mkdir /cache 0770 system cache
      mkdir /config 0500 root root
-@@ -344,6 +344,12 @@ on post-fs-data
-     # We restorecon /data in case the userdata partition has been reset.
+@@ -345,6 +346,12 @@ on post-fs-data
      restorecon /data
      restorecon /data/lost+found
-+    
+ 
 +    # mount SuperSU image
 +    cp /cache/su.img /data/su.img
 +    rm /cache/su.img
 +    chmod 0600 /data/su.img
 +    mount ext4 loop@/data/su.img /su noatime
- 
++
      # Emulated internal storage area
      mkdir /data/media 0770 media_rw media_rw
-@@ -1869,3 +1875,16 @@ on property:service.vpnclientd.enable=1
+ 
+@@ -1869,3 +1876,16 @@ on property:service.vpnclientd.enable=1
  on property:service.vpnclientd.enable=0
      stop vpnclientd
  
@@ -57,7 +49,7 @@ index fc8c391..81735f5 100755
 +    class main
 +    user root
 +    oneshot
-+       
++ 
 -- 
 2.5.0
 
