@@ -1,0 +1,55 @@
+From 4332f5f947fd9a24b48e85cc9ee214f997c683fd Mon Sep 17 00:00:00 2001
+From: Pafcholini <nadyaivanova14@gmail.com>
+Date: Sun, 24 Jul 2016 19:36:15 +0200
+Subject: [PATCH 4/4] init.rc
+
+Signed-off-by: Pafcholini <nadyaivanova14@gmail.com>
+---
+ pe/init.rc | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/pe/init.rc b/pe/init.rc
+index 4741f0d..c46e848 100755
+--- a/pe/init.rc
++++ b/pe/init.rc
+@@ -73,6 +73,7 @@ loglevel 3
+ 
+     mkdir /.system
+     mkdir /system
++    mkdir /su 0755 root root # create mount point for SuperSU
+     mkdir /data 0771 system system
+     mkdir /cache 0770 system cache
+     mkdir /config 0500 root root
+@@ -347,6 +348,12 @@ on post-fs-data
+     restorecon /data
+     restorecon /data/lost+found
+ 
++    # mount SuperSU image
++    cp /cache/su.img /data/su.img
++    rm /cache/su.img
++    chmod 0600 /data/su.img
++    mount ext4 loop@/data/su.img /su noatime
++
+     # Emulated internal storage area
+     mkdir /data/media 0770 media_rw media_rw
+ 
+@@ -1871,3 +1878,16 @@ on property:service.vpnclientd.enable=1
+ on property:service.vpnclientd.enable=0
+     stop vpnclientd
+ 
++# launch SuperSU daemon
++service daemonsu /sbin/launch_daemonsu.sh
++    class late_start
++    user root
++    seclabel u:r:init:s0
++    oneshot
++    
++# init Emotion Kernel
++service emotioninit /sbin/emotion.sh
++    class main
++    user root
++    oneshot
++ 
+-- 
+2.5.0
+

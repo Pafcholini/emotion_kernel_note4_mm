@@ -1,0 +1,28 @@
+From 74904e124bae0d8f1f859fecaed9781494fc02e8 Mon Sep 17 00:00:00 2001
+From: Pafcholini <nadyaivanova14@gmail.com>
+Date: Sun, 24 Jul 2016 19:33:53 +0200
+Subject: [PATCH 2/4] file_contexts
+
+Signed-off-by: Pafcholini <nadyaivanova14@gmail.com>
+---
+ pe/file_contexts | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/pe/file_contexts b/pe/file_contexts
+index f3a81ab..a34eec7 100644
+--- a/pe/file_contexts
++++ b/pe/file_contexts
+@@ -26,6 +26,10 @@
+ /seapp_contexts		u:object_r:rootfs:s0
+ /sepolicy		u:object_r:rootfs:s0
+ 
++
++# SuperSU
++/su(/.*)? u:object_r:system_file:s0
++
+ ##########################
+ # Devices
+ #
+-- 
+2.5.0
+

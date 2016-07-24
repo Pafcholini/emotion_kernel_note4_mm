@@ -1,0 +1,25 @@
+From 6144dccde132726a308d4809b48f85d355526edb Mon Sep 17 00:00:00 2001
+From: Pafcholini <nadyaivanova14@gmail.com>
+Date: Sun, 24 Jul 2016 19:35:10 +0200
+Subject: [PATCH 3/4] init.environ.rc
+
+Signed-off-by: Pafcholini <nadyaivanova14@gmail.com>
+---
+ pe/init.environ.rc | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/pe/init.environ.rc b/pe/init.environ.rc
+index 3706d3f..4e361ce 100755
+--- a/pe/init.environ.rc
++++ b/pe/init.environ.rc
+@@ -6,6 +6,7 @@ on init
+     export ANDROID_DATA /data
+     export ANDROID_STORAGE /storage
+     export EXTERNAL_STORAGE /sdcard
++    export PATH /su/bin:/sbin:/vendor/bin:/system/sbin:/system/bin:/system/xbin
+     export ASEC_MOUNTPOINT /mnt/asec
+     export BOOTCLASSPATH /system/framework/core-libart.jar:/system/framework/conscrypt.jar:/system/framework/okhttp.jar:/system/framework/core-junit.jar:/system/framework/bouncycastle.jar:/system/framework/ext.jar:/system/framework/framework.jar:/system/framework/telephony-common.jar:/system/framework/voip-common.jar:/system/framework/ims-common.jar:/system/framework/apache-xml.jar:/system/framework/org.apache.http.legacy.boot.jar:/system/framework/sec_edm.jar:/system/framework/sagearpolicymanager.jar:/system/framework/timakeystore.jar:/system/framework/seccamera.jar:/system/framework/scrollpause.jar:/system/framework/stayrotation.jar:/system/framework/commonimsinterface.jar:/system/framework/imsmanager.jar:/system/framework/sprengine.jar:/system/framework/smartbondingservice.jar:/system/framework/secocsp.jar:/system/framework/knoxvpnuidtag.jar:/system/framework/sec_sdp_sdk.jar:/system/framework/sec_sdp_hidden_sdk.jar:/system/framework/simageis.jar:/system/framework/sprintextension.jar:/system/framework/qcmediaplayer.jar:/system/framework/oem-services.jar:/system/framework/tcmiface.jar:/system/framework/com.qti.dpmframework.jar:/system/framework/dpmapi.jar
+     export SYSTEMSERVERCLASSPATH /system/framework/services.jar:/system/framework/ethernet-service.jar:/system/framework/wifi-service.jar
+-- 
+2.5.0
+
