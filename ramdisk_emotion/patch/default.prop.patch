@@ -6,8 +6,7 @@ Subject: [PATCH 1/4] default.prop
 Signed-off-by: Pafcholini <nadyaivanova14@gmail.com>
 ---
  f/default.prop | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
-
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 diff --git a/f/default.prop b/f/default.prop
 index 5b52eb8..1f0d844 100644
 --- a/f/default.prop
@@ -22,9 +21,8 @@ index 5b52eb8..1f0d844 100644
 +ro.secure=0
  ro.allow.mock.location=0
 -ro.debuggable=0
--ro.adb.secure=1
 +ro.debuggable=1
-+ro.adb.secure=0
+ ro.adb.secure=1
  ro.zygote=zygote32
  dalvik.vm.image-dex2oat-Xms=64m
  dalvik.vm.image-dex2oat-Xmx=64m
