@@ -285,7 +285,8 @@ ifeq ($(BUS_IFACE_PCIE),y)
 endif
 
 # Disabled DHDTCPACK_SUPPRESS for T Project / Enabled for Zero Project
-ifeq ($(filter y,$(CONFIG_MACH_UNIVERSAL5433) $(CONFIG_ARCH_APQ8084)),y)
+ifeq ($(CONFIG_ARCH_APQ8084),y)
+  DHDCFLAGS += -DSET_RPS_CPUS
   DHDCFLAGS :=$(filter-out -DDHDTCPACK_SUPPRESS,$(DHDCFLAGS))
 # For enable temperature throttling feature at BCM4358A3
 #  DHDCFLAGS += -DENABLE_TEMP_THROTTLING

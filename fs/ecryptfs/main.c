@@ -204,6 +204,7 @@ enum { ecryptfs_opt_sig, ecryptfs_opt_ecryptfs_sig,
 #ifdef CONFIG_DLP
 	   ecryptfs_opt_dlp,
 #endif
+       ecryptfs_opt_base, ecryptfs_opt_type, ecryptfs_opt_label,
        ecryptfs_opt_err };
 
 static const match_table_t tokens = {
@@ -236,6 +237,9 @@ static const match_table_t tokens = {
 #ifdef CONFIG_DLP
 	{ecryptfs_opt_dlp, "dlp_enabled"},
 #endif
+	{ecryptfs_opt_base, "base=%s"},
+	{ecryptfs_opt_type, "type=%s"},
+	{ecryptfs_opt_label, "label=%s"},
 	{ecryptfs_opt_err, NULL}
 };
 
@@ -282,6 +286,14 @@ static void ecryptfs_init_mount_crypt_stat(
 
 	mount_crypt_stat->partition_id = -1;
 #endif
+}
+
+static void ecryptfs_init_propagate_stat(
+	struct ecryptfs_propagate_stat *propagate_stat)
+{
+	memset((void *)propagate_stat, 0,
+			sizeof(struct ecryptfs_propagate_stat));
+	propagate_stat->propagate_type = TYPE_E_NONE;
 }
 
 #ifdef CONFIG_WTL_ENCRYPTION_FILTER
@@ -367,6 +379,8 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 	int fn_cipher_key_bytes_set = 0;
 	struct ecryptfs_mount_crypt_stat *mount_crypt_stat =
 		&sbi->mount_crypt_stat;
+	struct ecryptfs_propagate_stat *propagate_stat =
+		&sbi->propagate_stat;
 	substring_t args[MAX_OPT_ARGS];
 	int token;
 	char *sig_src;
@@ -378,6 +392,11 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 	char *fnek_src;
 	char *cipher_key_bytes_src;
 	char *fn_cipher_key_bytes_src;
+	char *base_path_src;
+	char *base_path_dst;
+	char *propagate_type;
+	char *label_src;
+	char *label_dst;
 	u8 cipher_code;
 #if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
 	char cipher_mode[ECRYPTFS_MAX_CIPHER_MODE_SIZE] = ECRYPTFS_AES_ECB_MODE;
@@ -390,6 +409,7 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 		goto out;
 	}
 	ecryptfs_init_mount_crypt_stat(mount_crypt_stat);
+	ecryptfs_init_propagate_stat(propagate_stat);
 	while ((p = strsep(&options, ",")) != NULL) {
 		if (!*p)
 			continue;
@@ -560,6 +580,34 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 			mount_crypt_stat->flags |= ECRYPTFS_MOUNT_DLP_ENABLED;
 		break;
 #endif
+		case ecryptfs_opt_base:
+			base_path_src = args[0].from;
+			base_path_dst = propagate_stat->base_path;
+			strncpy(base_path_dst, base_path_src, ECRYPTFS_BASE_PATH_SIZE);
+			break;
+		case ecryptfs_opt_type:
+			propagate_type = match_strdup(&args[0]);
+			if (!propagate_type)
+				return -ENOMEM;
+			if (!strncmp(propagate_type, "default", strlen("default")))
+				propagate_stat->propagate_type = TYPE_E_DEFAULT;
+			else if (!strncmp(propagate_type, "read", strlen("read")))
+				propagate_stat->propagate_type = TYPE_E_READ;
+			else if (!strncmp(propagate_type, "write", strlen("write")))
+				propagate_stat->propagate_type = TYPE_E_WRITE;
+			else {
+				printk(KERN_WARNING
+					  "%s: eCryptfs: unrecognized option [type=%s]\n",
+					  __func__, propagate_type);
+				propagate_stat->propagate_type = TYPE_E_NONE;
+			}
+			kfree(propagate_type);
+			break;
+		case ecryptfs_opt_label:
+			label_src = args[0].from;
+			label_dst = propagate_stat->label;
+			strncpy(label_dst, label_src, ECRYPTFS_LABEL_SIZE);
+			break;
 		case ecryptfs_opt_err:
 		default:
 			printk(KERN_WARNING
@@ -742,9 +790,12 @@ static struct dentry *ecryptfs_mount(struct file_system_type *fs_type, int flags
 	ecryptfs_set_superblock_private(s, sbi);
 	s->s_bdi = &sbi->bdi;
 
+	if (sbi->propagate_stat.propagate_type != TYPE_E_NONE)
+		s->s_op = &ecryptfs_multimount_sops;
+	else
+		s->s_op = &ecryptfs_sops;
 	/* ->kill_sb() will take care of sbi after that point */
 	sbi = NULL;
-	s->s_op = &ecryptfs_sops;
 	s->s_d_op = &ecryptfs_dops;
 
 	err = "Reading sb failed";

@@ -287,7 +287,6 @@ static struct dentry *__sdcardfs_lookup(struct dentry *dentry,
 		err =  PTR_ERR(lower_dentry);
 		goto out;
 	}
-
 	if (lower_dentry)
 		goto setup_lower;
 

@@ -1,17 +1,17 @@
-From 341b9abc5b7527926be344d9fb0fff98d679f61f Mon Sep 17 00:00:00 2001
+From b043bc8520eee0db8e91fe6a91f73b70195c9ea4 Mon Sep 17 00:00:00 2001
 From: Pafcholini <nadyaivanova14@gmail.com>
-Date: Wed, 29 Jun 2016 14:09:30 +0200
-Subject: [PATCH] init.rc
+Date: Wed, 5 Oct 2016 14:44:32 +0200
+Subject: [PATCH 4/4] init.rc
 
 Signed-off-by: Pafcholini <nadyaivanova14@gmail.com>
 ---
- f/init.rc | 20 ++++++++++++++++++++
+ p/init.rc | 20 ++++++++++++++++++++
  1 file changed, 20 insertions(+)
 
-diff --git a/f/init.rc b/f/init.rc
-index fc8c391..aca4cd8 100755
---- a/f/init.rc
-+++ b/f/init.rc
+diff --git a/p/init.rc b/p/init.rc
+index cab620f..2848511 100755
+--- a/p/init.rc
++++ b/p/init.rc
 @@ -73,6 +73,7 @@ loglevel 3
  
      mkdir /.system
@@ -51,5 +51,5 @@ index fc8c391..aca4cd8 100755
 +    oneshot
 + 
 -- 
-2.5.0
+2.7.4
 

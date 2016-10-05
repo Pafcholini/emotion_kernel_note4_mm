@@ -197,6 +197,8 @@ static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq,
 		update_l2_bw(NULL);
 		trace_cpu_frequency_switch_end(policy->cpu);
 		cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
+	} else {
+		pr_debug("%s: cpu%d clk_set_rate fail- %u!!\n", __func__, policy->cpu, new_freq);
 	}
 
 	/* Restore priority after clock ramp-up */
@@ -221,7 +223,7 @@ static int msm_cpufreq_target(struct cpufreq_policy *policy,
 				unsigned int target_freq,
 				unsigned int relation)
 {
-	int ret = -EFAULT;
+	int ret = 0;
 	int index;
 	struct cpufreq_frequency_table *table;
 
@@ -229,17 +231,20 @@ static int msm_cpufreq_target(struct cpufreq_policy *policy,
 
 	mutex_lock(&per_cpu(cpufreq_suspend, policy->cpu).suspend_mutex);
 
+	if (target_freq == policy->cur)
+		goto done; 
+
 	if (per_cpu(cpufreq_suspend, policy->cpu).device_suspended) {
 		pr_debug("cpufreq: cpu%d scheduling frequency change "
 				"in suspend.\n", policy->cpu);
-		ret = -EFAULT;
+		//ret = -EFAULT;
 		goto done;
 	}
 
 	table = cpufreq_frequency_get_table(policy->cpu);
 	if (cpufreq_frequency_table_target(policy, table, target_freq, relation,
 			&index)) {
-		pr_err("cpufreq: invalid target_freq: %d\n", target_freq);
+		pr_err("cpufreq: cpu%d invalid target_freq: %d\n", policy->cpu, target_freq);
 		ret = -EINVAL;
 		goto done;
 	}
@@ -266,10 +271,75 @@ done:
 	return ret;
 }
 
+static int cpufreq_verify_within_freqtable(struct cpufreq_policy *policy)
+{
+	unsigned int min_idx = 0, max_idx = 0, min_bak, max_bak;
+	int ret_min, ret_max;
+	struct cpufreq_frequency_table *table =
+		cpufreq_frequency_get_table(policy->cpu);
+	if (!table)
+		return -ENODEV;
+
+	/***********************************************/
+	/* caution : this policy should be new_policy. */
+	min_bak = policy->min;
+	policy->min = policy->cpuinfo.min_freq;
+	max_bak = policy->max;
+	policy->max = policy->cpuinfo.max_freq;
+	/***********************************************/
+	
+	ret_min = cpufreq_frequency_table_target(policy, table,
+				   min_bak,
+				   CPUFREQ_RELATION_L,
+				   &min_idx);
+
+	ret_max = cpufreq_frequency_table_target(policy, table,
+				   max_bak,
+				   CPUFREQ_RELATION_H,
+				   &max_idx);
+
+	if (unlikely(ret_min)) {
+		pr_err("%s: Unable to find matching min freq(cpu%u: %u)\n",
+			 __func__, policy->cpu, policy->min);
+	} else if (min_bak != table[min_idx].frequency) {
+		policy->min = table[min_idx].frequency;
+		ret_min = 1;
+	} else
+		policy->min = min_bak;
+
+	if (unlikely(ret_max)) {
+		pr_err("%s: Unable to find matching max freq(cpu%u: %u)\n",
+			 __func__, policy->cpu, policy->max);
+	} else if (max_bak != table[max_idx].frequency) {
+		policy->max = table[max_idx].frequency;
+		ret_max = 1;
+	} else
+		policy->max = max_bak;
+	
+	if (policy->min > policy->max) {
+		policy->min = policy->max;
+		ret_min |= 2;
+	}
+	
+	if (ret_min > 0)
+		pr_debug("%s: wrong freq. adjust(cpu%d min: %u -> %u)\n",
+			 __func__, policy->cpu, min_bak, policy->min);
+
+	if (ret_max > 0)
+		pr_debug("%s: wrong freq. adjust(cpu%d max: %u -> %u)\n",
+			 __func__, policy->cpu, max_bak, policy->max);
+
+	return ((ret_max << 16) | (ret_min));
+}
+
 static int msm_cpufreq_verify(struct cpufreq_policy *policy)
 {
 	cpufreq_verify_within_limits(policy, policy->cpuinfo.min_freq,
 			policy->cpuinfo.max_freq);
+
+	/* caution : this policy should be new_policy. */
+	cpufreq_verify_within_freqtable(policy);
+
 	return 0;
 }
 

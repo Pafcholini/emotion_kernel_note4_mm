@@ -593,8 +593,6 @@ static void hdmi_edid_extract_audio_data_blocks(
 #if defined(CONFIG_SEC_MHL_SUPPORT)
 	u16 audio_ch = 0;
 	u32 bit_rate = 0;
-	const u8 *adb_temp = NULL;
-	u8 len_temp = 0;
 #endif
 
 	if (!edid_ctrl) {
@@ -633,23 +631,15 @@ static void hdmi_edid_extract_audio_data_blocks(
 			continue;
 		}
 #if defined(CONFIG_SEC_MHL_SUPPORT)
-		adb_temp = adb;
-		len_temp = len;
-		while(len > 0) {
-			if (adb[1]>>3 == 1) {
-				audio_ch |= (1 << (adb[1] & 0x7));
-				if((adb[1] & 0x7) > 0x04)
-					audio_ch |= 0x20;
-				if (adb[3] & 0x07) {
-					bit_rate = adb[3] & 0x7;
-					bit_rate |= (adb[2] & 0x7F) << 3;
-				}
+		if (adb[1]>>3 == 1) {
+			audio_ch |= (1 << (adb[1] & 0x7));
+			if((adb[1] & 0x7) > 0x04)
+				audio_ch |= 0x20;
+			if (adb[3] & 0x07) {
+				bit_rate = adb[3] & 0x7;
+				bit_rate |= (adb[2] & 0x7F) << 3;
 			}
-			len -= 3;
-			adb += 3;
 		}
-		adb = adb_temp;
-		len = len_temp;
 #endif
 
 		memcpy(edid_ctrl->audio_data_block + edid_ctrl->adb_size,
@@ -660,12 +650,6 @@ static void hdmi_edid_extract_audio_data_blocks(
 		adb_max++;
 	} while (adb);
 
-#if defined(CONFIG_SEC_MHL_SUPPORT)
-	edid_ctrl_ext->audio_channel_info |= (bit_rate << 16);
-	edid_ctrl_ext->audio_channel_info |= audio_ch;
-	DEV_INFO("%s: HDMI Audio info : 0x%X\n", __func__,
-				edid_ctrl_ext->audio_channel_info);
-#endif
 } /* hdmi_edid_extract_audio_data_blocks */
 
 #if defined(CONFIG_SEC_MHL_SUPPORT)

@@ -3324,7 +3324,7 @@ static const struct snd_kcontrol_new ss_solution_mixer_controls[] = {
 				msm_sec_sa_get, msm_sec_sa_put),
 	SOC_SINGLE_MULTI_EXT("VSP data", SND_SOC_NOPM, 0, 65535, 0, 1,
 				msm_sec_vsp_get, msm_sec_vsp_put),
-	SOC_SINGLE_MULTI_EXT("Audio DHA data", SND_SOC_NOPM, 0, 65535, 0, 13,
+	SOC_SINGLE_MULTI_EXT("Audio DHA data", SND_SOC_NOPM, 0, 65535, 0, 14,
 				msm_sec_dha_get, msm_sec_dha_put),
 	SOC_SINGLE_MULTI_EXT("LRSM data", SND_SOC_NOPM, 0, 65535, 0, 2,
 				msm_sec_lrsm_get, msm_sec_lrsm_put),

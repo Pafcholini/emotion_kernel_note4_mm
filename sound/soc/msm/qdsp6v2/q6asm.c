@@ -4371,6 +4371,7 @@ int q6asm_set_dha(struct audio_client *ac,int *param)
 	cmd.enable = param[0];
 	for(i = 0; i < 12; i++)
 		cmd.gain[i/6][i%6] = param[i+1];
+	cmd.device = param[13];
 	rc = apr_send_pkt(ac->apr, (uint32_t *)&cmd);
 	if (rc < 0) {
 		rc = -EINVAL;

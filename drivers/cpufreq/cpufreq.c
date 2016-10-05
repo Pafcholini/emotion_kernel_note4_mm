@@ -1744,8 +1744,10 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 	int retval = -EINVAL;
 	unsigned int old_target_freq = target_freq;
 
-	if (cpufreq_disabled())
+	if (cpufreq_disabled()) {
+		pr_debug("%s : cpufreq_disabled\n", __func__);
 		return -ENODEV;
+	}
 
 	/* Make sure that target_freq is within supported range */
 	if (target_freq > policy->max)
@@ -1755,15 +1757,6 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 
 	pr_debug("target for CPU %u: %u kHz, relation %u, requested %u kHz\n",
 			policy->cpu, target_freq, relation, old_target_freq);
-
-	/*
-	 * This might look like a redundant call as we are checking it again
-	 * after finding index. But it is left intentionally for cases where
-	 * exactly same freq is called again and so we can save on few function
-	 * calls.
-	 */
-	if (target_freq == policy->cur)
-		return 0;
 
 	if (cpufreq_driver->target)
 		retval = cpufreq_driver->target(policy, target_freq, relation);
